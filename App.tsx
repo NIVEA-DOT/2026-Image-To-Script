@@ -31,11 +31,11 @@ const App: React.FC = () => {
   // Step 2 & 3 Data
   const [generatedMedia, setGeneratedMedia] = useState<GeneratedMedia[]>([]);
   
-  // Settings & Keys
-  const [googleApiKey, setGoogleApiKey] = useState<string>(localStorage.getItem('google_api_key') || '');
-  const [elevenLabsKey, setElevenLabsKey] = useState<string>(localStorage.getItem('elevenlabs_key') || '');
-  const [voiceId, setVoiceId] = useState<string>(localStorage.getItem('elevenlabs_voice_id') || 'nPczCjzI2devNBz1zWbc');
-  const [falAiKey, setFalAiKey] = useState<string>(localStorage.getItem('falai_key') || '');
+  // Settings & Keys (Initialized as empty, loaded in useEffect based on User ID)
+  const [googleApiKey, setGoogleApiKey] = useState<string>('');
+  const [elevenLabsKey, setElevenLabsKey] = useState<string>('');
+  const [voiceId, setVoiceId] = useState<string>('nPczCjzI2devNBz1zWbc');
+  const [falAiKey, setFalAiKey] = useState<string>('');
 
   // Loading States
   const [loadingType, setLoadingType] = useState<'none' | 'planning' | 'image' | 'video' | 'audio' | 'zip' | 'upscale' | 'single_image'>('none');
@@ -59,17 +59,41 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  // Load User Specific Keys
   useEffect(() => {
-    localStorage.setItem('google_api_key', googleApiKey);
-    localStorage.setItem('elevenlabs_key', elevenLabsKey);
-    localStorage.setItem('elevenlabs_voice_id', voiceId);
-    localStorage.setItem('falai_key', falAiKey);
-  }, [googleApiKey, elevenLabsKey, voiceId, falAiKey]);
+    if (user) {
+      setGoogleApiKey(localStorage.getItem(`google_api_key_${user.uid}`) || '');
+      setElevenLabsKey(localStorage.getItem(`elevenlabs_key_${user.uid}`) || '');
+      setVoiceId(localStorage.getItem(`elevenlabs_voice_id_${user.uid}`) || 'nPczCjzI2devNBz1zWbc');
+      setFalAiKey(localStorage.getItem(`falai_key_${user.uid}`) || '');
+    } else {
+      // Clear keys if no user
+      setGoogleApiKey('');
+      setElevenLabsKey('');
+      setVoiceId('nPczCjzI2devNBz1zWbc');
+      setFalAiKey('');
+    }
+  }, [user]);
+
+  // Save User Specific Keys
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(`google_api_key_${user.uid}`, googleApiKey);
+      localStorage.setItem(`elevenlabs_key_${user.uid}`, elevenLabsKey);
+      localStorage.setItem(`elevenlabs_voice_id_${user.uid}`, voiceId);
+      localStorage.setItem(`falai_key_${user.uid}`, falAiKey);
+    }
+  }, [googleApiKey, elevenLabsKey, voiceId, falAiKey, user]);
 
   // Handle Logout
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      // Clean up state manually as well
+      setCurrentStep(1);
+      setIntroScript('');
+      setBodyScript('');
+      setGeneratedMedia([]);
     } catch (e) {
       console.error("Logout failed", e);
     }
@@ -139,8 +163,8 @@ const App: React.FC = () => {
 
       setLoadingStatus(`총 ${allSegments.length}개 장면으로 분석 및 프롬프트 생성 중...`);
 
-      // 2. Call Gemini for Prompts
-      const sceneData = await analyzeSegmentsForPrompts(allSegments, (msg) => setLoadingStatus(msg));
+      // 2. Call Gemini for Prompts (Pass API Key)
+      const sceneData = await analyzeSegmentsForPrompts(allSegments, googleApiKey, (msg) => setLoadingStatus(msg));
 
       // 3. Create Placeholder Media Objects (No images yet)
       const plannedMedia: GeneratedMedia[] = sceneData.map((data, index) => ({
@@ -179,7 +203,7 @@ const App: React.FC = () => {
       const item = generatedMedia.find(p => p.index === index);
       if (!item) return;
 
-      const url = await generateImage(item.prompt);
+      const url = await generateImage(item.prompt, googleApiKey);
       setGeneratedMedia(prev => prev.map(p => p.index === index ? { 
         ...p, 
         mediaUrl: url, 
@@ -227,7 +251,7 @@ const App: React.FC = () => {
         try {
           if (completedCount > 0) await new Promise(r => setTimeout(r, 4000)); // Rate limit buffer
 
-          const url = await generateImage(item.prompt);
+          const url = await generateImage(item.prompt, googleApiKey);
           
           setGeneratedMedia(prev => prev.map(p => p.index === item.index ? { 
             ...p, 
@@ -336,7 +360,7 @@ const App: React.FC = () => {
     
     setGeneratedMedia(prev => prev.map(m => m.index === index ? { ...m, isVideoProcessing: true } : m));
     try {
-      const vUrl = await generateVideoFromImage(media.mediaUrl, media.videoMotionPrompt || "Cinematic pan.");
+      const vUrl = await generateVideoFromImage(media.mediaUrl, media.videoMotionPrompt || "Cinematic pan.", googleApiKey);
       setGeneratedMedia(prev => prev.map(m => m.index === index ? { ...m, videoUrl: vUrl, isVideoProcessing: false } : m));
     } catch (e: any) { 
       setError(e.message); 
@@ -645,7 +669,7 @@ const App: React.FC = () => {
 
         <ApiKeyModal isOpen={showSettings} onClose={() => setShowSettings(false)} elevenLabsKey={elevenLabsKey} setElevenLabsKey={setElevenLabsKey} elevenLabsVoiceId={voiceId} setElevenLabsVoiceId={setVoiceId} falAiKey={falAiKey} setFalAiKey={setFalAiKey} googleApiKey={googleApiKey} setGoogleApiKey={setGoogleApiKey} />
         <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} projects={historyProjects} onLoad={handleHistoryLoad} onDelete={async (id) => { await deleteProject(id); setHistoryProjects(await getProjects()); }} />
-        <ThumbnailModal isOpen={showThumbnailModal} onClose={() => setShowThumbnailModal(false)} script={introScript + " " + bodyScript} onGenerateText={generateThumbnailText} />
+        <ThumbnailModal isOpen={showThumbnailModal} onClose={() => setShowThumbnailModal(false)} script={introScript + " " + bodyScript} onGenerateText={(script) => generateThumbnailText(script, googleApiKey)} />
 
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}

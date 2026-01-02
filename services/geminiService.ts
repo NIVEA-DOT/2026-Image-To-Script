@@ -3,10 +3,7 @@ import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { TEXT_ANALYSIS_MODEL, IMAGE_GENERATION_MODEL } from '../constants';
 import { AspectRatio, ArtStyle } from '../types';
 
-const getApiKey = (): string => {
-  return process.env.API_KEY || localStorage.getItem('google_api_key') || "";
-};
-
+// Helper to handle retries
 async function callWithRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   try {
     return await fn();
@@ -55,9 +52,11 @@ const STICKMAN_STYLE_INSTRUCTION = `
 
 export async function analyzeSegmentsForPrompts(
   segments: string[],
+  apiKey: string,
   onStatusUpdate?: (msg: string) => void
 ): Promise<{ scriptSegment: string; imagePrompt: string; videoMotionPrompt: string }[]> {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  if (!apiKey) throw new Error("Google Gemini API Key가 필요합니다.");
+  const ai = new GoogleGenAI({ apiKey });
   const results: { scriptSegment: string; imagePrompt: string; videoMotionPrompt: string }[] = [];
   const batchSize = 4;
   
@@ -98,9 +97,11 @@ export async function analyzeSegmentsForPrompts(
 }
 
 export async function generateImage(
-  prompt: string
+  prompt: string,
+  apiKey: string
 ): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  if (!apiKey) throw new Error("Google Gemini API Key가 필요합니다.");
+  const ai = new GoogleGenAI({ apiKey });
   
   // Enforce Stickman Style and Korean Text
   const finalPrompt = `${prompt}. Style: 2D cartoon illustration, bold black outlines, flat colors, flash animation style, simple graphic background, high quality, no photorealism, no 3D effects. Character is a stick man with a red round helmet. 
@@ -116,8 +117,9 @@ export async function generateImage(
   throw new Error("이미지 생성 도중 오류가 발생했습니다.");
 }
 
-export async function generateThumbnailText(script: string): Promise<{ topText: string; bottomText: string }> {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+export async function generateThumbnailText(script: string, apiKey: string): Promise<{ topText: string; bottomText: string }> {
+  if (!apiKey) throw new Error("Google Gemini API Key가 필요합니다.");
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: TEXT_ANALYSIS_MODEL,
     contents: `자극적인 썸네일 문구 2줄 생성. 대본: ${script.slice(0, 1000)}\n{"topText": "1행", "bottomText": "2행"}`,
@@ -126,8 +128,9 @@ export async function generateThumbnailText(script: string): Promise<{ topText: 
   return robustJsonParse(response.text);
 }
 
-export async function refineScript(script: string, prompt: string): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+export async function refineScript(script: string, prompt: string, apiKey: string): Promise<string> {
+  if (!apiKey) throw new Error("Google Gemini API Key가 필요합니다.");
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: TEXT_ANALYSIS_MODEL,
     contents: `대본 수정: ${prompt}\n대본: ${script}`
@@ -135,8 +138,9 @@ export async function refineScript(script: string, prompt: string): Promise<stri
   return response.text || script;
 }
 
-export async function generateVideoFromImage(imageBase64: string, motionPrompt: string): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+export async function generateVideoFromImage(imageBase64: string, motionPrompt: string, apiKey: string): Promise<string> {
+  if (!apiKey) throw new Error("Google Gemini API Key가 필요합니다.");
+  const ai = new GoogleGenAI({ apiKey });
   let operation = await ai.models.generateVideos({
     model: 'veo-3.1-fast-generate-preview',
     prompt: motionPrompt,
