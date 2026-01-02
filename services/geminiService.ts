@@ -4,7 +4,7 @@ import { TEXT_ANALYSIS_MODEL, IMAGE_GENERATION_MODEL } from '../constants';
 import { AspectRatio, ArtStyle } from '../types';
 
 const getApiKey = (): string => {
-  return process.env.API_KEY || "";
+  return process.env.API_KEY || localStorage.getItem('google_api_key') || "";
 };
 
 async function callWithRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {

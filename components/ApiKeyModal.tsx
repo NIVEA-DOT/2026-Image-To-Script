@@ -11,6 +11,8 @@ interface ApiKeyModalProps {
   setElevenLabsVoiceId: (id: string) => void;
   falAiKey?: string;
   setFalAiKey?: (key: string) => void;
+  googleApiKey: string;
+  setGoogleApiKey: (key: string) => void;
 }
 
 const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ 
@@ -21,17 +23,11 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   elevenLabsVoiceId, 
   setElevenLabsVoiceId,
   falAiKey = '',
-  setFalAiKey
+  setFalAiKey,
+  googleApiKey,
+  setGoogleApiKey
 }) => {
-  const handleOpenSelectKey = async () => {
-    try {
-      // @ts-ignore
-      await window.aistudio.openSelectKey();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
+  
   if (!isOpen) return null;
 
   return (
@@ -54,12 +50,19 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
               <h3 className="text-lg font-bold text-[#191f28]">Visual AI (Gemini)</h3>
             </div>
             <div className="p-6 bg-[#f9fafb] rounded-[1.5rem] border border-gray-100">
-              <p className="text-sm text-[#4e5968] leading-relaxed mb-6 font-medium">
-                이미지 및 비디오 생성을 위해 유료 결제가 완료된 Google Cloud 프로젝트의 API 키가 필요합니다.
-              </p>
-              <Button onClick={handleOpenSelectKey} fullWidth variant="primary" className="h-14 bg-[#3182f6] rounded-xl font-bold border-none">
-                Gemini API 키 선택
-              </Button>
+               <div className="space-y-2">
+                <label className="text-xs font-bold text-[#8b95a1] ml-1 uppercase tracking-wider">Google Gemini API Key</label>
+                <input 
+                  type="password" 
+                  value={googleApiKey} 
+                  onChange={(e) => setGoogleApiKey(e.target.value)} 
+                  className="w-full p-4 bg-white border border-gray-200 focus:border-[#3182f6] rounded-xl text-sm transition-all outline-none font-medium" 
+                  placeholder="AIzaSy..."
+                />
+                <p className="text-xs text-gray-400 ml-1">
+                  이미지 및 비디오 생성을 위해 필요합니다. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline hover:text-[#3182f6] font-bold">키 발급받기</a>
+                </p>
+              </div>
             </div>
           </section>
 

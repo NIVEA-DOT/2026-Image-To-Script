@@ -32,6 +32,7 @@ const App: React.FC = () => {
   const [generatedMedia, setGeneratedMedia] = useState<GeneratedMedia[]>([]);
   
   // Settings & Keys
+  const [googleApiKey, setGoogleApiKey] = useState<string>(localStorage.getItem('google_api_key') || '');
   const [elevenLabsKey, setElevenLabsKey] = useState<string>(localStorage.getItem('elevenlabs_key') || '');
   const [voiceId, setVoiceId] = useState<string>(localStorage.getItem('elevenlabs_voice_id') || 'nPczCjzI2devNBz1zWbc');
   const [falAiKey, setFalAiKey] = useState<string>(localStorage.getItem('falai_key') || '');
@@ -59,10 +60,11 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    localStorage.setItem('google_api_key', googleApiKey);
     localStorage.setItem('elevenlabs_key', elevenLabsKey);
     localStorage.setItem('elevenlabs_voice_id', voiceId);
     localStorage.setItem('falai_key', falAiKey);
-  }, [elevenLabsKey, voiceId, falAiKey]);
+  }, [googleApiKey, elevenLabsKey, voiceId, falAiKey]);
 
   // Handle Logout
   const handleLogout = async () => {
@@ -113,9 +115,10 @@ const App: React.FC = () => {
       return;
     }
 
-    // @ts-ignore
-    if (!(await window.aistudio.hasSelectedApiKey())) { // @ts-ignore
-      await window.aistudio.openSelectKey();
+    if (!googleApiKey) {
+      setError("Google Gemini API 키가 설정되지 않았습니다. 설정 메뉴에서 키를 입력해주세요.");
+      setShowSettings(true);
+      return;
     }
 
     setLoadingType('planning');
@@ -415,7 +418,8 @@ const App: React.FC = () => {
   const downloadFileSafe = async (url: string, fileName: string) => {
     try {
       const isVideo = url.includes('video') || url.includes('operations') || fileName.endsWith('.mp4');
-      const finalUrl = isVideo ? `${url}${url.includes('?') ? '&' : '?'}key=${process.env.API_KEY}` : url;
+      const apiKey = googleApiKey || process.env.API_KEY;
+      const finalUrl = isVideo ? `${url}${url.includes('?') ? '&' : '?'}key=${apiKey}` : url;
       const response = await fetch(finalUrl);
       const blob = await response.blob();
       const localUrl = URL.createObjectURL(blob);
@@ -639,7 +643,7 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        <ApiKeyModal isOpen={showSettings} onClose={() => setShowSettings(false)} elevenLabsKey={elevenLabsKey} setElevenLabsKey={setElevenLabsKey} elevenLabsVoiceId={voiceId} setElevenLabsVoiceId={setVoiceId} falAiKey={falAiKey} setFalAiKey={setFalAiKey} />
+        <ApiKeyModal isOpen={showSettings} onClose={() => setShowSettings(false)} elevenLabsKey={elevenLabsKey} setElevenLabsKey={setElevenLabsKey} elevenLabsVoiceId={voiceId} setElevenLabsVoiceId={setVoiceId} falAiKey={falAiKey} setFalAiKey={setFalAiKey} googleApiKey={googleApiKey} setGoogleApiKey={setGoogleApiKey} />
         <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} projects={historyProjects} onLoad={handleHistoryLoad} onDelete={async (id) => { await deleteProject(id); setHistoryProjects(await getProjects()); }} />
         <ThumbnailModal isOpen={showThumbnailModal} onClose={() => setShowThumbnailModal(false)} script={introScript + " " + bodyScript} onGenerateText={generateThumbnailText} />
 
