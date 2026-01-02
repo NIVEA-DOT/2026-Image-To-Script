@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Korean Script to Image Generator",
+  "description": "A React application that automatically generates up to 100 images from a 10,000-character Korean script, allowing users to select aspect ratio and art style.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
